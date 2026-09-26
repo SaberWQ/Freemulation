@@ -1,24 +1,50 @@
 # cython: language_level=3
-from libc.stdio cimport FILE, fopen, fread, fclose
+# distutils: language = c++
 
-def fast_hex_dump(str filepath, int max_bytes=4096):
-    cdef bytes py_bytes = filepath.encode('utf-8')
-    cdef char* filename = py_bytes
-    cdef FILE* file = fopen(filename, "rb")
-    if file == NULL:
-        return "Помилка відкриття файлу"
+from libcpp.string cimport string
 
-    cdef unsigned char buffer[4096]
-    cdef size_t bytes_read = fread(buffer, 1, max_bytes, file)
-    fclose(file)
+cdef extern from *:
+    """
+    #include <string>
+    #include <cctype>
 
-    cdef list result = []
-    cdef size_t i, j
-    cdef str line, hex_part, ascii_part
+    struct FastStats {
+        long lines;
+        long words;
+        long chars;
+    };
 
-    for i from 0 <= i < bytes_read by 16:
-        hex_part = " ".join([f"{buffer[i+j]:02X}" for j in range(min(16, bytes_read - i))])
-        ascii_part = "".join([chr(buffer[i+j]) if 32 <= buffer[i+j] <= 126 else "." for j in range(min(16, bytes_read - i))])
-        result.append(f"{i:08X}  {hex_part:<48}  |{ascii_part}|")
+    inline FastStats process_text_cpp(const std::string& text) {
+        FastStats stats = {0, 0, (long)text.length()};
+        bool in_word = false;
+        
+        for (char c : text) {
+            if (c == '\n') stats.lines++;
+            if (std::isspace(static_cast<unsigned char>(c))) {
+                in_word = false;
+            } else if (!in_word) {
+                in_word = true;
+                stats.words++;
+            }
+        }
+        if (text.length() > 0 && text.back() != '\n') {
+            stats.lines++;
+        }
+        return stats;
+    }
+    """
+    struct FastStats:
+        long lines
+        long words
+        long chars
+    FastStats process_text_cpp(string text)
 
-    return "\n".join(result)
+def analyze_code_fast(str text_data):
+    """Швидка обробка тексту через C++"""
+    cdef string c_text = text_data.encode('utf-8')
+    cdef FastStats stats = process_text_cpp(c_text)
+    return {
+        "lines": stats.lines,
+        "words": stats.words,
+        "chars": stats.chars
+    }

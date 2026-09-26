@@ -87,7 +87,7 @@ cd ..
 #### Запуск програми:
 
 ```bash
-python main.py
+python manage.py
 ```
 
 ---
@@ -146,7 +146,7 @@ cd ..
 #### Run the IDE:
 
 ```bash
-python main.py
+python manage.py
 ```
 
 ---
