@@ -4,6 +4,18 @@
 
 Потужний десктопний IDE-комбайн на Python із підтримкою Cython/C++, гнучким інтерфейсом та повним кастомізатором тем.
 
+┌────────────────────────────────────────────────────────────────────────┐
+│ [←] [→] [🔄] [  https://... / Пошуковий запит...                  ] [🔍] │
+├────────────────────────────────────────────────────────────────────────┤
+│ Режими: [🌐 Web (DuckDuckGo)] [📦 PyPI] [🐙 GitHub] [💬 StackOverflow] │
+├────────────────────────────────────────────────────────────────────────┤
+│  [ Вкладка 1: PyPI ]  [ Вкладка 2: GitHub ]  [ + Нова вкладка ]        │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  Область рендерингу (HTML/Markdown Viewer або картки результатів)       │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+
 **[ 🇺🇦 Українська](#українська-секція) | [ 🇬🇧 English](#english-section)**
 
 </center>
@@ -79,9 +91,7 @@ pip install customtkinter pillow cython
 #### Компіляція C++ / Cython модулів:
 
 ```bash
-cd fast_core
-python setup.py build_ext --inplace
-cd ..
+python fast_core/setup.py build_ext  --inplace
 ```
 
 #### Запуск програми:
@@ -138,9 +148,7 @@ pip install customtkinter pillow cython
 #### Build C++ / Cython extensions:
 
 ```bash
-cd fast_core
-python setup.py build_ext --inplace
-cd ..
+python fast_core/setup.py build_ext  --inplace
 ```
 
 #### Run the IDE:

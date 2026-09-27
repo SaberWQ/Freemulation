@@ -6,10 +6,10 @@ from .config import THEME, DEFAULT_THEME, FONT_UI, FONT_CODE
 from modules.palette_manager import palette
 from modules.translator import TranslatorWindow
 from modules.language_manager import lang_mgr
-
+from modules.mini_browser import FreemulationBrowserWindow, FreemulationBrowserTab
 
 class SettingsWindow(ctk.CTkToplevel):
-    def __init__(self, master, update_callback):
+    def __init__(self, master, update_callback=None):
         super().__init__(master)
         self.title("IDE Advanced Settings & Themes v1.0")
         self.geometry("650x700")
@@ -17,7 +17,7 @@ class SettingsWindow(ctk.CTkToplevel):
         self.configure(fg_color=THEME["bg_editor"])
         self.update_callback = update_callback
 
-        # Гнучке сіткове розміщення для ідеальної адаптивності вікна
+        # Гнучке сіткове розміщення для адаптивності вікна
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 
@@ -28,7 +28,7 @@ class SettingsWindow(ctk.CTkToplevel):
             text_color=THEME["fg_text"]
         ).grid(row=0, column=0, pady=20, sticky="n")
 
-        # Динамічний скролер, який розтягується разом із вікном
+        # Динамічний скролер
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=5)
         self.scroll_frame.columnconfigure(0, weight=1)
@@ -52,7 +52,7 @@ class SettingsWindow(ctk.CTkToplevel):
         for key, desc in labels_map.items():
             self.create_color_picker_row(desc, key)
 
-        # Нижня панель кнопок із фіксованим притисканням до низу
+        # Нижня панель кнопок
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.grid(row=2, column=0, sticky="ew", padx=30, pady=20)
         btn_frame.columnconfigure(1, weight=1)
@@ -74,7 +74,7 @@ class SettingsWindow(ctk.CTkToplevel):
         ctk.CTkLabel(row, text=label_text, text_color=THEME["fg_text"], font=FONT_UI).pack(side="left", padx=5)
         
         btn = ctk.CTkButton(
-            row, text=THEME[key], width=120, fg_color=THEME[key], 
+            row, text=THEME.get(key, "#000000"), width=120, fg_color=THEME.get(key, "#000000"), 
             command=lambda k=key: self.pick_color(k)
         )
         btn.pack(side="right", padx=5)
@@ -91,11 +91,13 @@ class SettingsWindow(ctk.CTkToplevel):
             THEME[key] = val
             if key in self.color_buttons:
                 self.color_buttons[key].configure(fg_color=val, text=val)
-        self.update_callback()
+        if self.update_callback:
+            self.update_callback()
         messagebox.showinfo("Скидання", "Тему успішно скинуто до заводських налаштувань версії 1.0!")
 
     def apply_changes(self):
-        self.update_callback()
+        if self.update_callback:
+            self.update_callback()
         messagebox.showinfo("Успіх", "Усі зміни оформлення застосовано динамічно!")
         self.destroy()
 
@@ -187,10 +189,10 @@ class VSCodeSettingsWindow(ctk.CTkToplevel):
         self.clear_content()
         ctk.CTkLabel(self.content_frame, text="Прив'язка гарячих клавіш", font=(FONT_UI[0], 16, "bold")).pack(anchor="w", pady=10)
         shortcuts = [
-            ("Нова вкладка термінала", "Ctrl+Shift+T / Cmd+Shift+T"),
-            ("Швидкий пошук", "Ctrl+F / Cmd+F"),
+            ("Міні-браузер", "Ctrl+B / Cmd+B"),
+            ("Швидкий перекладач", "Ctrl+T / Cmd+T"),
             ("Зберегти файл", "Ctrl+S / Cmd+S"),
-            ("Панель налаштувань", "Ctrl+, / Cmd+,"),
+            ("Запуск аналізу", "F5"),
         ]
         for name, key in shortcuts:
             row = ctk.CTkFrame(self.content_frame, fg_color="transparent")
@@ -213,9 +215,9 @@ class MenuManager:
 
     def rebuild_menu(self):
         """Перезбирання меню з примусовим оновленням для macOS Cocoa Bar"""
-        self.root.config(menu="")  # 1. Відв'язуємо старе меню для скидання кешу macOS
+        self.root.config(menu="")  # Відв'язуємо старе меню
         
-        self.menubar = tk.Menu(self.root)  # 2. Створюємо абсолютно новий об'єкт
+        self.menubar = tk.Menu(self.root)  # Створюємо новий об'єкт
 
         self._create_file_menu()
         self._create_edit_menu()
@@ -225,8 +227,8 @@ class MenuManager:
         self._create_palette_menu()
         self._create_language_menu()
 
-        self.root.config(menu=self.menubar)  # 3. Прив'язуємо нове меню
-        self.root.update_idletasks()        # 4. Примушуємо macOS перемалювати панель
+        self.root.config(menu=self.menubar)  # Прив'язуємо нове меню
+        self.root.update_idletasks()        # Примушуємо macOS перемалювати панель
 
     def _bind_hotkeys(self):
         """Реєстрація обробників гарячих клавіш для macOS (Command) та Win/Linux (Control)"""
@@ -245,6 +247,8 @@ class MenuManager:
         self.root.bind_all("<Control-a>", lambda e: self._select_all())
 
         # Інструменти
+        self.root.bind_all("<Command-b>", lambda e: self._open_browser())
+        self.root.bind_all("<Control-b>", lambda e: self._open_browser())
         self.root.bind_all("<Command-t>", lambda e: self._open_translator())
         self.root.bind_all("<Control-t>", lambda e: self._open_translator())
         self.root.bind_all("<F5>", lambda e: self._run_fast_analysis())
@@ -274,9 +278,13 @@ class MenuManager:
 
     def _create_tools_menu(self):
         m = tk.Menu(self.menubar, tearoff=0)
+        m.add_command(label=lang_mgr.get("mini_browser"), accelerator="Cmd+B", command=self._open_browser)
         m.add_command(label=lang_mgr.get("translator"), accelerator="Cmd+T", command=self._open_translator)
         m.add_command(label=lang_mgr.get("translate_sel"), command=self._translate_selection)
         self.menubar.add_cascade(label=lang_mgr.get("tools"), menu=m)
+    
+    def _open_browser(self):
+        FreemulationBrowserWindow(self.root)
 
     def _create_run_menu(self):
         m = tk.Menu(self.menubar, tearoff=0)
@@ -331,40 +339,43 @@ class MenuManager:
     # --- Обробники дій та команд ---
 
     def _exec_editor(self, event_name):
-        if self.layout and hasattr(self.layout, 'editor'):
+        if self.layout and hasattr(self.layout, 'editor') and hasattr(self.layout.editor, 'text_area'):
             self.layout.editor.text_area.event_generate(event_name)
 
     def _select_all(self):
-        if self.layout and hasattr(self.layout, 'editor'):
+        if self.layout and hasattr(self.layout, 'editor') and hasattr(self.layout.editor, 'text_area'):
             self.layout.editor.text_area.tag_add("sel", "1.0", "end")
             return "break"
 
     def _new_file(self):
-        if self.layout and hasattr(self.layout, 'editor'):
+        if self.layout and hasattr(self.layout, 'editor') and hasattr(self.layout.editor, 'text_area'):
             self.layout.editor.text_area.delete("1.0", "end")
-            self.layout.editor._update_line_numbers()
+            if hasattr(self.layout.editor, '_update_line_numbers'):
+                self.layout.editor._update_line_numbers()
 
     def _open_file(self):
         path = filedialog.askopenfilename(filetypes=[("Усі файли", "*.*"), ("Python", "*.py")])
-        if path and self.layout:
+        if path and self.layout and hasattr(self.layout, 'editor') and hasattr(self.layout.editor, 'text_area'):
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
             self.layout.editor.text_area.delete("1.0", "end")
             self.layout.editor.text_area.insert("1.0", content)
-            self.layout.editor._update_line_numbers()
+            if hasattr(self.layout.editor, '_update_line_numbers'):
+                self.layout.editor._update_line_numbers()
 
     def _save_file(self):
         if self._current_file_path:
-            content = self.layout.editor.text_area.get("1.0", "end-1c")
-            with open(self._current_file_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            messagebox.showinfo("Збереження", "Файл успішно збережено!")
+            if self.layout and hasattr(self.layout, 'editor') and hasattr(self.layout.editor, 'text_area'):
+                content = self.layout.editor.text_area.get("1.0", "end-1c")
+                with open(self._current_file_path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                messagebox.showinfo("Збереження", "Файл успішно збережено!")
         else:
             self._save_file_as()
 
     def _save_file_as(self):
         path = filedialog.asksaveasfilename(filetypes=[("Python", "*.py"), ("Усі файли", "*.*")])
-        if path and self.layout:
+        if path and self.layout and hasattr(self.layout, 'editor') and hasattr(self.layout.editor, 'text_area'):
             self._current_file_path = path
             content = self.layout.editor.text_area.get("1.0", "end-1c")
             with open(path, "w", encoding="utf-8") as f:
@@ -373,18 +384,19 @@ class MenuManager:
 
     def _open_translator(self):
         selected_text = ""
-        if self.layout and hasattr(self.layout, 'editor'):
+        if self.layout and hasattr(self.layout, 'editor') and hasattr(self.layout.editor, 'text_area'):
             try:
                 selected_text = self.layout.editor.text_area.get("sel.first", "sel.last")
             except tk.TclError:
                 selected_text = ""
 
         def replace_cb(new_text):
-            try:
-                self.layout.editor.text_area.delete("sel.first", "sel.last")
-                self.layout.editor.text_area.insert("insert", new_text)
-            except tk.TclError:
-                self.layout.editor.text_area.insert("insert", new_text)
+            if self.layout and hasattr(self.layout, 'editor') and hasattr(self.layout.editor, 'text_area'):
+                try:
+                    self.layout.editor.text_area.delete("sel.first", "sel.last")
+                    self.layout.editor.text_area.insert("insert", new_text)
+                except tk.TclError:
+                    self.layout.editor.text_area.insert("insert", new_text)
 
         TranslatorWindow(self.root, initial_text=selected_text, on_insert_callback=replace_cb)
 
@@ -392,7 +404,7 @@ class MenuManager:
         self._open_translator()
 
     def _run_fast_analysis(self):
-        if self.layout and hasattr(self.layout, 'editor'):
+        if self.layout and hasattr(self.layout, 'editor') and hasattr(self.layout.editor, 'run_cpp_analysis'):
             self.layout.editor.run_cpp_analysis()
 
     def _clear_terminal(self):
